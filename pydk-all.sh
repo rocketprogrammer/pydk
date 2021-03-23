@@ -34,7 +34,7 @@ export HOST_TRIPLET=x86_64-linux-gnu
 export HOST_TAG=linux-x86_64
 
 #tested
-export CMAKE_VERSION=3.16.3
+export CMAKE_VERSION=3.13.0
 
 
 export ORIGIN=$(pwd)
