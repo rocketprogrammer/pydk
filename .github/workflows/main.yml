@@ -5,12 +5,6 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        target: ["hostonly", "armeabi-v7a", "arm64-v8a", "x86", "x86_64", "wasm"]
-    env:
-      ARCHITECTURES: ${{ matrix.target }}
     steps:
     - uses: actions/checkout@v1
     - name: PyDK prepare
@@ -21,6 +15,8 @@ jobs:
             clang --version | head -n 1
             echo
             gcc --version | head -n 1
+            echo
+            env|grep GITHUB
             echo
             grep "^Pkg.Revision =" ${ANDROID_HOME}/ndk-bundle/source.properties
             sudo apt-get update
@@ -33,19 +29,40 @@ jobs:
             sudo apt-get install -y  libgl1-mesa-dev libgles2-mesa-dev libglapi-mesa mesa-common-dev libegl1-mesa-dev >/dev/null
             echo panda3d support
             sudo apt-get install -y libbullet-dev libfreetype6-dev libjpeg-dev libode-dev libopenal-dev libpng-dev libssl-dev libogg-dev libvorbis-dev  >/dev/null
-            if [ "$ARCHITECTURES" = "wasm" ]; then
-              echo emscripten support
-              git clone https://github.com/emscripten-core/emsdk.git
-              cd emsdk && ./emsdk update-tags && ./emsdk install --embedded latest && ./emsdk activate --embedded latest
-            fi
+            echo maybe pyproot support libtalloc-dev libfuse3-dev
+            echo emscripten support
+            git clone https://github.com/emscripten-core/emsdk.git
+            cd emsdk && ./emsdk update-tags && ./emsdk install --embedded latest && ./emsdk activate --embedded latest
+            echo
+            echo " === Building pre-requisite HOST support ===="
+            cd /home/runner/work/pydk/pydk
+            ARCHITECTURES=hostonly time sh pydk-all.sh
             cd $WD
-    - name: PyDK Build target (non-wasm)
-      if: matrix.target != 'wasm'
+    - name: PyDK Emscripten build wasm
       run: |
             cd /home/runner/work/pydk/pydk
-            time sh pydk-all.sh
-    - name: PyDK Emscripten build (wasm)
-      if: matrix.target == 'wasm'
+            ARCHITECTURES=wasm bash pydk-all.sh
+    - name: PyDK Android build armeabi-v7a
       run: |
             cd /home/runner/work/pydk/pydk
-            bash pydk-all.sh
+            ARCHITECTURES=armeabi-v7a time bash pydk-all.sh
+    - name: PyDK Android build arm64-v8a
+      run: |
+            cd /home/runner/work/pydk/pydk
+            ARCHITECTURES=arm64-v8a time bash pydk-all.sh
+    - name: PyDK Android build x86
+      run: |
+            cd /home/runner/work/pydk/pydk
+            ARCHITECTURES=x86  time bash pydk-all.sh
+    - name: PyDK Android build x86_64
+      run: |
+            cd /home/runner/work/pydk/pydk
+            ARCHITECTURES=x86_64 time bash pydk-all.sh
+    - name: PyDK Collect SDK
+      run: |
+            cd /home/runner/work/pydk/pydk
+    - name: PyDK Package SDK
+      uses: actions/upload-artifact@v2
+      with:
+        name: pydk-min
+        path: /home/runner/work/pydk/pydk/pydk-min
